@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "algorithm": "AES-256-GCM",
+  "iv": "xSvpo-puS8SkWwBm",
+  "parts": [
+    "payload-001.enc",
+    "payload-002.enc",
+    "payload-003.enc",
+    "payload-004.enc",
+    "payload-005.enc",
+    "payload-006.enc",
+    "payload-007.enc"
+  ],
+  "encryptedBytes": 3710616,
+  "keyId": "8ea91938cf55"
+}
