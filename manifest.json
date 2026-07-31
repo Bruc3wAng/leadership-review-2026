@@ -1,16 +1,14 @@
 {
-  "version": 1,
+  "version": 2,
   "algorithm": "AES-256-GCM",
-  "iv": "xSvpo-puS8SkWwBm",
+  "iv": "smklW-bS18-4nJ-1",
   "parts": [
-    "payload-001.enc",
-    "payload-002.enc",
-    "payload-003.enc",
-    "payload-004.enc",
-    "payload-005.enc",
-    "payload-006.enc",
-    "payload-007.enc"
+    "content-38e69de775aa-001.txt"
   ],
-  "encryptedBytes": 3710616,
+  "partLengths": [
+    379628
+  ],
+  "payloadId": "38e69de775aa",
+  "encryptedBytes": 284721,
   "keyId": "8ea91938cf55"
 }

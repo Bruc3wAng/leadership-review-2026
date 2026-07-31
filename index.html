@@ -16,6 +16,7 @@
     h1{margin:0;font-size:30px;line-height:1.25}
     p{margin:16px 0 0;color:#b9c8d8;font-size:14px;line-height:1.7}
     .pulse{display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:#43bfc1;animation:p 1.1s infinite}
+    button{display:none;margin-top:22px;padding:10px 18px;border:1px solid rgba(94,219,222,.7);background:#0b445d;color:#fff;font:600 14px Arial,"Microsoft YaHei","微软雅黑",sans-serif;cursor:pointer}
     @keyframes p{50%{opacity:.25;transform:scale(.72)}}
     iframe{display:block;width:100%;height:100vh;border:0;background:#fff}
   </style>
@@ -26,30 +27,80 @@
       <div class="line"></div>
       <h1><span class="pulse"></span>正在打开汇报页面</h1>
       <p id="status">正在验证安全链接并加载内容，请稍候。</p>
+      <button id="retry" type="button">重新加载</button>
     </div>
   </main>
   <script>
     const statusNode=document.getElementById("status");
+    const retryButton=document.getElementById("retry");
+    const manifest={"version":2,"algorithm":"AES-256-GCM","iv":"smklW-bS18-4nJ-1","parts":["content-38e69de775aa-001.txt"],"partLengths":[379628],"payloadId":"38e69de775aa","encryptedBytes":284721,"keyId":"8ea91938cf55"};
+    const sourceBases=[
+      new URL("./",location.href).href,
+      "https://raw.githubusercontent.com/Bruc3wAng/leadership-review-2026/main/",
+      "https://cdn.jsdelivr.net/gh/Bruc3wAng/leadership-review-2026@main/"
+    ];
     const decode=(value)=>{
       const normalized=value.replace(/-/g,"+").replace(/_/g,"/");
       const padded=normalized+"=".repeat((4-normalized.length%4)%4);
       return Uint8Array.from(atob(padded),c=>c.charCodeAt(0));
+    };
+    const wait=(duration)=>new Promise(resolve=>setTimeout(resolve,duration));
+    const fetchPart=async(name,index)=>{
+      for(let round=1;round<=2;round+=1){
+        for(let sourceIndex=0;sourceIndex<sourceBases.length;sourceIndex+=1){
+          const controller=new AbortController();
+          const timer=setTimeout(()=>controller.abort(),10000);
+          try{
+            if(round>1||sourceIndex>0){
+              statusNode.textContent="网络波动，正在自动切换线路并重试…";
+            }
+            const url=new URL(name,sourceBases[sourceIndex]);
+            url.searchParams.set("v",manifest.payloadId);
+            url.searchParams.set("r",String(round));
+            const response=await fetch(url,{cache:"default",signal:controller.signal});
+            if(!response.ok)throw new Error("HTTP "+response.status);
+            const content=await response.text();
+            if(content.length!==manifest.partLengths[index]){
+              throw new Error("Incomplete response");
+            }
+            return content;
+          }catch{
+          }finally{
+            clearTimeout(timer);
+          }
+        }
+        await wait(500*round);
+      }
+      throw new Error("当前网络未能完整载入汇报内容，请切换网络后重新加载。");
+    };
+    const loadParts=async()=>{
+      const parts=new Array(manifest.parts.length);
+      let cursor=0;
+      let completed=0;
+      const worker=async()=>{
+        while(true){
+          const index=cursor++;
+          if(index>=manifest.parts.length)return;
+          parts[index]=await fetchPart(manifest.parts[index],index);
+          completed+=1;
+          statusNode.textContent="正在载入安全内容 "+completed+" / "+manifest.parts.length;
+        }
+      };
+      const workers=Math.min(2,manifest.parts.length);
+      await Promise.all(Array.from({length:workers},()=>worker()));
+      return parts;
     };
     (async()=>{
       try{
         const params=new URLSearchParams(location.hash.slice(1));
         const keyText=params.get("k");
         if(!keyText)throw new Error("此链接缺少访问密钥，请使用收到的完整链接。");
-        const manifest=await fetch("./manifest.json",{cache:"no-store"}).then(r=>{
-          if(!r.ok)throw new Error("页面资源暂时无法读取，请刷新重试。");
-          return r.json();
-        });
-        const parts=await Promise.all(manifest.parts.map(name=>
-          fetch("./"+name,{cache:"no-store"}).then(r=>{
-            if(!r.ok)throw new Error("页面资源暂时无法读取，请刷新重试。");
-            return r.text();
-          })
-        ));
+        if(!globalThis.crypto?.subtle){
+          throw new Error("当前浏览器版本过旧，请使用最新版 Chrome、Edge 或 Safari 打开。");
+        }
+        statusNode.textContent="正在载入安全内容 0 / "+manifest.parts.length;
+        const parts=await loadParts();
+        statusNode.textContent="正在解密并生成汇报页面…";
         const cryptoKey=await crypto.subtle.importKey(
           "raw",decode(keyText),{name:"AES-GCM"},false,["decrypt"]
         );
@@ -60,14 +111,22 @@
         );
         const iframe=document.createElement("iframe");
         iframe.title="2026 Leadership Review";
-        iframe.srcdoc=new TextDecoder().decode(decrypted);
+        const baseUrl=new URL("./",location.href).href;
+        const reportHtml=new TextDecoder().decode(decrypted).replace(
+          "<head>",
+          '<head><base href="'+baseUrl+'">'
+        );
+        iframe.srcdoc=reportHtml;
         document.body.replaceChildren(iframe);
       }catch(error){
-        statusNode.textContent=error?.message?.includes("operation-specific")
+        const message=String(error?.message||"");
+        statusNode.textContent=message.includes("operation-specific")||message.includes("OperationError")
           ?"安全链接无效或已失效，请联系分享人获取新链接。"
-          :(error?.message||"页面加载失败，请刷新重试。");
+          :(message||"页面加载失败，请切换网络后重新加载。");
+        retryButton.style.display="inline-flex";
       }
     })();
+    retryButton.addEventListener("click",()=>location.reload());
   </script>
 </body>
 </html>
