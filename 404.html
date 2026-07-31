@@ -33,7 +33,7 @@
   <script>
     const statusNode=document.getElementById("status");
     const retryButton=document.getElementById("retry");
-    const manifest={"version":2,"algorithm":"AES-256-GCM","iv":"qnhd-uvijmL3ndCk","parts":["content-688b6a5f5605-001.txt"],"partLengths":[410198],"payloadId":"688b6a5f5605","encryptedBytes":307648,"keyId":"8ea91938cf55"};
+    const manifest={"version":2,"algorithm":"AES-256-GCM","iv":"URmDrhT71NkFoIiI","parts":["content-740b6940df67-001.txt"],"partLengths":[410198],"payloadId":"740b6940df67","encryptedBytes":307648,"keyId":"8ea91938cf55"};
     const sourceBases=[
       new URL("./",location.href).href,
       "https://raw.githubusercontent.com/Bruc3wAng/leadership-review-2026/main/",
@@ -116,6 +116,22 @@
           "<head>",
           '<head><base href="'+baseUrl+'">'
         );
+        iframe.addEventListener("load",()=>{
+          const reportDocument=iframe.contentDocument;
+          if(!reportDocument)return;
+          reportDocument.addEventListener("click",(event)=>{
+            const target=event.target;
+            const ReportElement=reportDocument.defaultView?.Element;
+            if(!ReportElement||!(target instanceof ReportElement))return;
+            const link=target.closest('a[href^="#"]');
+            if(!link)return;
+            const targetId=link.getAttribute("href")?.slice(1);
+            const section=targetId?reportDocument.getElementById(targetId):null;
+            if(!section)return;
+            event.preventDefault();
+            section.scrollIntoView({behavior:"smooth",block:"start"});
+          });
+        });
         iframe.srcdoc=reportHtml;
         document.body.replaceChildren(iframe);
       }catch(error){
